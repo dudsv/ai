@@ -10,7 +10,7 @@ ZAPI_TOKEN = '74CD58CE2ED12992EED4C996'
 TOGETHER_API_KEY = 'tgp_v1_wvt7O5cUciNA87wd6qiE684MtoDDUwUw9RPuPDHbs3E'
 
 TRIGGER_KEYWORDS = ['atendente', 'humano', 'reclamar', 'erro', 'urgente', 'problema']
-contexto_por_usuario = {}  # Dicionário para armazenar histórico por número
+contexto_por_usuario = {}
 
 @app.route("/", methods=["GET"])
 def home():
@@ -28,7 +28,6 @@ def webhook():
         print("❌ Dados incompletos.")
         return jsonify({"status": "erro", "msg": "dados ausentes"}), 400
 
-    # Cria histórico se não existir
     if phone not in contexto_por_usuario:
         contexto_por_usuario[phone] = [{"role": "system", "content": "Você é um assistente educado, prestativo e claro. Ajude o usuário com o que for necessário."}]
         saudacao = "👋 Olá! Como posso te ajudar?
@@ -39,7 +38,6 @@ def webhook():
         contexto_por_usuario[phone].append({"role": "user", "content": msg})
         return jsonify({"status": "menu enviado"})
 
-    # Se usuário enviar "1", "2" ou "3", tratar como fluxo
     if msg.strip() == "1":
         resposta = "📦 Nossos produtos estão disponíveis em: https://exemplo.com/produtos"
     elif msg.strip() == "2":
@@ -61,7 +59,7 @@ def consultar_ia(mensagem, telefone):
 
     payload = {
         "model": "gpt-4-turbo",
-        "messages": contexto_por_usuario[telefone][-10:],  # Limita para evitar excesso
+        "messages": contexto_por_usuario[telefone][-10:],
         "temperature": 0.7
     }
     headers = {
