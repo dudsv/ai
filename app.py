@@ -21,7 +21,16 @@ def webhook():
     data = request.get_json()
     print("📥 Dados recebidos do Z-API:", data)
 
-    msg = data.get("message") or data.get("text")
+    # Correção segura para capturar a mensagem corretamente
+    msg = None
+    if "message" in data and isinstance(data["message"], str):
+        msg = data["message"]
+    elif "text" in data:
+        if isinstance(data["text"], dict) and "body" in data["text"]:
+            msg = data["text"]["body"]
+        elif isinstance(data["text"], str):
+            msg = data["text"]
+
     phone = data.get("phone") or data.get("from")
 
     if not msg or not phone:
