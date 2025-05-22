@@ -20,33 +20,30 @@ def webhook():
     data = request.get_json(silent=True)
     print("📥 RAW JSON recebido do Z-API:", data)
 
-    # Extração resiliente da mensagem
+    # Extrai mensagem de vários formatos
     msg = None
     if isinstance(data, dict):
         if 'message' in data and isinstance(data['message'], str):
             msg = data['message']
         elif 'text' in data:
-            if isinstance(data['text'], dict) and data['text'].get('body'):
+            if isinstance(data['text'], dict) and 'body' in data['text']:
                 msg = data['text']['body']
             elif isinstance(data['text'], str):
                 msg = data['text']
         elif 'body' in data:
             msg = data['body']
-    # fallback converte tudo
     if msg is None:
         msg = str(data)
 
-    # Extração do telefone
+    # Extrai telefone de vários campos
     phone = None
     if isinstance(data, dict):
         phone = data.get('phone') or data.get('from') or data.get('sender')
 
-    # Se não conseguir extrair, ignora
     if not msg or not phone:
-        print("⚠️ Não foi possível extrair 'msg' ou 'phone'. Ignorando.")
+        print("⚠️ Dados insuficientes (msg ou phone). Ignorando.")
         return jsonify({"status": "ignored"}), 200
 
-    # Inicializa contexto se necessário
     if phone not in contexto_por_usuario:
         contexto_por_usuario[phone] = [{
             "role": "system",
@@ -56,14 +53,11 @@ def webhook():
             )
         }]
 
-    # Consulta a IA com contexto
     resposta = consultar_ia(msg, phone)
 
-    # Se detectar palavra-chave de urgência, adiciona nota
     if any(kw in msg.lower() for kw in TRIGGER_KEYWORDS):
-        resposta += "\n\n🔁 Parece que você precisa de ajuda urgente. Estou te transferindo agora a um atendente humano, tudo bem?"
+        resposta += "\n\n🔁 Parece que você precisa de ajuda urgente. Estou te transferindo agora para um atendente humano, tudo bem?"
 
-    # Envia resposta e loga retorno
     enviar_resposta(phone, resposta)
     return jsonify({"status": "mensagem enviada"}), 200
 
@@ -95,6 +89,7 @@ def enviar_resposta(phone, message):
     headers = {"Content-Type": "application/json"}
     try:
         resp = requests.post(url, json=payload, headers=headers)
+        # **DEBUG AQUI**: mostramos status e corpo da resposta da Z-API
         print(f"📤 Z-API resposta HTTP {resp.status_code}: {resp.text}")
     except Exception as e:
         print("❌ Erro ao enviar via Z-API:", e)
