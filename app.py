@@ -9,12 +9,12 @@ ZAPI_INSTANCE = '3E18FB6338B7A08354CDBAA23289AB67'
 ZAPI_TOKEN = '74CD58CE2ED12992EED4C996'
 TOGETHER_API_KEY = 'tgp_v1_wvt7O5cUciNA87wd6qiE684MtoDDUwUw9RPuPDHbs3E'
 
-TRIGGER_KEYWORDS = ['atendente', 'humano', 'reclamar', 'erro', 'urgente', 'problema']
+TRIGGER_KEYWORDS = ['atendente', 'humano', 'reclamar', 'erro', 'urgente', 'suporte', 'problema']
 contexto_por_usuario = {}
 
 @app.route("/", methods=["GET"])
 def home():
-    return "✅ Servidor Flask com IA + Menu + Contexto ativo."
+    return "✅ Chatbot natural com IA e redirecionamento inteligente."
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -29,26 +29,12 @@ def webhook():
         return jsonify({"status": "erro", "msg": "dados ausentes"}), 400
 
     if phone not in contexto_por_usuario:
-        contexto_por_usuario[phone] = [{"role": "system", "content": "Você é um assistente educado, prestativo e claro. Ajude o usuário com o que for necessário."}]
-        saudacao = "👋 Olá! Como posso te ajudar?
-1️⃣ Consultar produtos
-2️⃣ Falar com suporte
-3️⃣ Ver horários de atendimento"
-        enviar_resposta(phone, saudacao)
-        contexto_por_usuario[phone].append({"role": "user", "content": msg})
-        return jsonify({"status": "menu enviado"})
+        contexto_por_usuario[phone] = [{"role": "system", "content": "Você é um atendente virtual simpático, direto, prestativo e natural. Responda como um humano real, de forma empática, simples e clara."}]
 
-    if msg.strip() == "1":
-        resposta = "📦 Nossos produtos estão disponíveis em: https://exemplo.com/produtos"
-    elif msg.strip() == "2":
-        resposta = "🔁 Encaminhando você para nosso suporte. Aguarde um momento..."
-    elif msg.strip() == "3":
-        resposta = "🕒 Nosso horário de atendimento é de segunda a sexta, das 9h às 18h."
-    else:
-        resposta = consultar_ia(msg, phone)
+    resposta = consultar_ia(msg, phone)
 
-        if any(p in msg.lower() for p in TRIGGER_KEYWORDS):
-            resposta += "\n\n🔁 Parece que você precisa de ajuda urgente. Estou encaminhando para um atendente humano, ok?"
+    if any(p in msg.lower() for p in TRIGGER_KEYWORDS):
+        resposta += "\n\n🔁 Parece que você precisa de ajuda urgente. Estou te transferindo agora para um atendente humano, tudo bem?"
 
     enviar_resposta(phone, resposta)
     return jsonify({"status": "mensagem enviada"})
@@ -60,7 +46,7 @@ def consultar_ia(mensagem, telefone):
     payload = {
         "model": "gpt-4-turbo",
         "messages": contexto_por_usuario[telefone][-10:],
-        "temperature": 0.7
+        "temperature": 0.8
     }
     headers = {
         "Authorization": f"Bearer {TOGETHER_API_KEY}",
@@ -74,7 +60,7 @@ def consultar_ia(mensagem, telefone):
         return resposta
     except Exception as e:
         print("❌ Erro na IA:", e)
-        return "Desculpe, houve um problema. Tente novamente mais tarde."
+        return "Desculpe, tive um problema ao responder. Pode tentar de novo?"
 
 def enviar_resposta(phone, message):
     print(f"📤 Enviando para {phone}: {message}")
