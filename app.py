@@ -4,8 +4,8 @@ import os
 
 app = Flask(__name__)
 
-ZAPI_INSTANCE   = '3E18FB6338B7A08354CDBAA23289AB67'
-ZAPI_TOKEN      = '74CD58CE2ED12992EED4C996'
+ZAPI_INSTANCE    = '3E18FB6338B7A08354CDBAA23289AB67'
+ZAPI_TOKEN       = '74CD58CE2ED12992EED4C996'
 TOGETHER_API_KEY = 'tgp_v1_wvt7O5cUciNA87wd6qiE684MtoDDUwUw9RPuPDHbs3E'
 
 TRIGGER_KEYWORDS = ['atendente', 'humano', 'reclamar', 'erro', 'urgente', 'suporte', 'problema']
@@ -22,9 +22,7 @@ def webhook():
 
     # Extração resiliente da mensagem
     msg = None
-    if not isinstance(data, dict):
-        msg = None
-    else:
+    if isinstance(data, dict):
         if 'message' in data and isinstance(data['message'], str):
             msg = data['message']
         elif 'text' in data:
@@ -34,39 +32,38 @@ def webhook():
                 msg = data['text']
         elif 'body' in data:
             msg = data['body']
-        # fallback: converte JSON inteiro em string
-        else:
-            msg = str(data)
+    # fallback converte tudo
+    if msg is None:
+        msg = str(data)
 
     # Extração do telefone
     phone = None
     if isinstance(data, dict):
         phone = data.get('phone') or data.get('from') or data.get('sender')
 
-    # Se não conseguir extrair, apenas loga e responde OK
+    # Se não conseguir extrair, ignora
     if not msg or not phone:
         print("⚠️ Não foi possível extrair 'msg' ou 'phone'. Ignorando.")
         return jsonify({"status": "ignored"}), 200
 
-    # Inicializa contexto
+    # Inicializa contexto se necessário
     if phone not in contexto_por_usuario:
-        contexto_por_usuario[phone] = [
-            {
-                "role": "system",
-                "content": (
-                    "Você é um atendente virtual simpático, direto, prestativo e natural. "
-                    "Responda como um humano real, de forma empática, simples e clara."
-                )
-            }
-        ]
+        contexto_por_usuario[phone] = [{
+            "role": "system",
+            "content": (
+                "Você é um atendente virtual simpático, direto, prestativo e natural. "
+                "Responda como um humano real, de forma empática, simples e clara."
+            )
+        }]
 
-    # Consulta IA
+    # Consulta a IA com contexto
     resposta = consultar_ia(msg, phone)
 
-    # Se chave crítica, adiciona nota de transferência
+    # Se detectar palavra-chave de urgência, adiciona nota
     if any(kw in msg.lower() for kw in TRIGGER_KEYWORDS):
-        resposta += "\n\n🔁 Parece que você precisa de ajuda urgente. Estou te transferindo agora para um atendente humano, tudo bem?"
+        resposta += "\n\n🔁 Parece que você precisa de ajuda urgente. Estou te transferindo agora a um atendente humano, tudo bem?"
 
+    # Envia resposta e loga retorno
     enviar_resposta(phone, resposta)
     return jsonify({"status": "mensagem enviada"}), 200
 
@@ -93,11 +90,12 @@ def consultar_ia(mensagem, telefone):
         return "Desculpe, tive um problema ao responder. Pode tentar de novo?"
 
 def enviar_resposta(phone, message):
-    print(f"📤 Enviando para {phone}: {message}")
     url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
     payload = {"phone": phone, "message": message}
+    headers = {"Content-Type": "application/json"}
     try:
-        requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+        resp = requests.post(url, json=payload, headers=headers)
+        print(f"📤 Z-API resposta HTTP {resp.status_code}: {resp.text}")
     except Exception as e:
         print("❌ Erro ao enviar via Z-API:", e)
 
