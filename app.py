@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify, send_from_directory
 import requests
 import os
@@ -63,4 +64,6 @@ def send_message_to_whatsapp(user_number, message):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Mudança importante: Altere o host para '0.0.0.0' e use a variável de ambiente para a porta
+    port = int(os.environ.get('PORT', 5000))  # O Render define a porta automaticamente
+    app.run(host='0.0.0.0', port=port, debug=True)
